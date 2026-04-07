@@ -251,23 +251,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let lower = cleanText.toLowerCase();
 
-        if (lower.includes('decide') || lower.includes('decision') || lower.includes('agreed') || lower.includes('we will') || lower.includes('agreed to')) {
-          // Filter out simple questions like "Are we all agreed on that?"
-          const isQuestion = cleanText.trim().endsWith('?') && cleanText.split(' ').length < 12;
-          if (!isQuestion) {
-            const keyPhrase = extractKeyPhrase(cleanText, 'Decision');
-            allExtractedData.push({ type: 'Decision', text: keyPhrase, assignee: speaker || 'Team', due: '-', sentiment: detectSentiment(cleanText) });
-          }
+        // ── STRICT ACTION DETECTION ──
+        // Only match genuine first-person commitments or direct assignments
+        const ACTION_PATTERNS = [
+          /\bi('ll| will| am going to)\b/i,                    // "I will", "I'll", "I am going to"
+          /\btake\s+(the\s+)?action\s+(item\s+)?to\b/i,        // "take the action item to"
+          /\bplease\s+[a-z]+\b.{5,}/i,                         // "please run a cost-benefit..."
+          /\bwill\s+(complete|finish|deliver|submit|draft|update|send|fix|handle|run|set up|reach out|look into|review|prepare|check|implement|build|test|deploy|schedule|coordinate|ensure|make sure|get|provide)\b/i,
+          /\bis\s+responsible\s+for\b/i,                       // "X is responsible for"
+          /\bcommit(ting)?\s+to\b/i,                           // "committing to"
+          /\bassigned?\s+to\b.*\bby\b/i,                       // "assigned to X by [date]"
+        ];
+
+        // ── STRICT DECISION DETECTION ──
+        // Only match explicit decision statements
+        const DECISION_PATTERNS = [
+          /\bdecision\s*(made|is\s*:?|:)\s*.{5,}/i,            // "Decision made:", "Decision:"
+          /\bwe\s+(decided|have decided|are deciding)\b/i,     // "We decided"
+          /\bwe\s+('ve\s+)?agreed\s+to\b/i,                   // "We agreed to"
+          /\bformal(ly)?\s+(decide|agree|commit)\b/i,          // "formally decide"
+          /\bgoing\s+with\b.{5,}/i,                            // "going with [option]"
+          /\bno\s+(hybrid|alternative|other)\b/i,              // "no hybrid approach"
+          /\bwill\s+(delay|migrate|move|launch|adopt|use|switch|standardize|deprecate)\b.{5,}/i, // team-level decisions
+        ];
+
+        const wordCount = cleanText.trim().split(/\s+/).length;
+        const isQuestion = cleanText.trim().endsWith('?');
+
+        // Test strict decision patterns
+        const isDecision = !isQuestion && wordCount >= 8 && DECISION_PATTERNS.some(p => p.test(cleanText));
+        // Test strict action patterns
+        const isAction   = !isQuestion && wordCount >= 8 && ACTION_PATTERNS.some(p => p.test(cleanText));
+
+        if (isDecision) {
+          const keyPhrase = extractKeyPhrase(cleanText, 'Decision');
+          allExtractedData.push({ type: 'Decision', text: keyPhrase, assignee: speaker || 'Team', due: '-', sentiment: detectSentiment(cleanText) });
         }
-        else if (lower.includes('action') || lower.includes('task') || lower.includes('will do') || lower.includes('will take') || lower.includes('need to') || lower.includes('should') || lower.includes('assign') || lower.includes('complete') || lower.includes('i will') || lower.includes('i\'ll')) {
-          // Must be a real sentence (≥6 words) not just a fragment
-          if (cleanText.split(' ').length >= 6) {
-            let due = '-';
-            let dateMatch = line.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|\w+ \d{1,2}(?:th|st|nd|rd)?,?\s*\d{0,4})/i);
-            if (dateMatch) due = dateMatch[1];
-            const keyPhrase = extractKeyPhrase(cleanText, 'Action');
-            allExtractedData.push({ type: 'Action', text: keyPhrase, assignee: speaker || 'Team', due: due, sentiment: detectSentiment(cleanText) });
-          }
+        else if (isAction) {
+          let due = '-';
+          let dateMatch = line.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|\w+ \d{1,2}(?:th|st|nd|rd)?,?\s*\d{0,4})/i);
+          if (dateMatch) due = dateMatch[1];
+          const keyPhrase = extractKeyPhrase(cleanText, 'Action');
+          allExtractedData.push({ type: 'Action', text: keyPhrase, assignee: speaker || 'Team', due: due, sentiment: detectSentiment(cleanText) });
         }
       });
     });
