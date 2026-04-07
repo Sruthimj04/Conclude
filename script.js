@@ -331,18 +331,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── CONCISE SUMMARY EXTRACTION ──
   // Distills a long sentence into the key commitment/decision phrase
   function extractKeyPhrase(text, type) {
-    const lower = text.toLowerCase();
     // Try to extract the core commitment pattern
     const actionPatterns = [
-      /i(?:'ll| will) (.{10,80}?)(?:\.|$)/i,
-      /(?:will|going to) (.{10,80}?)(?:\.|$)/i,
-      /(?:action|task)[:\s]+(.{10,80}?)(?:\.|$)/i,
-      /(?:complete|finish|deliver|submit|draft|update|send|fix|do|handle) (.{10,80}?)(?:\.|$)/i,
+      /i(?:'ll| will) (.{10,200}?)(?:\.|$)/i,
+      /(?:will|going to) (.{10,200}?)(?:\.|$)/i,
+      /(?:action|task)[:\s]+(.{10,200}?)(?:\.|$)/i,
+      /(?:complete|finish|deliver|submit|draft|update|send|fix|do|handle) (.{10,200}?)(?:\.|$)/i,
     ];
     const decisionPatterns = [
-      /(?:decision(?:\s+is)?|decided?(?:\s+(?:to|that))?|agreed?(?:\s+(?:to|that))?)[:\s]+(.{10,120}?)(?:\.|$)/i,
-      /we (?:will|are going to|shall) (.{10,100}?)(?:\.|$)/i,
-      /(?:going|decided) (?:with|to) (.{10,100}?)(?:\.|$)/i,
+      /(?:decision(?:\s+(?:made|is))?|decided?(?:\s+(?:to|that))?|agreed?(?:\s+(?:to|that))?)[:\s]+(.{10,250}?)(?:\.|$)/i,
+      /we (?:will|are going to|shall) (.{10,250}?)(?:\.|$)/i,
+      /(?:going|decided) (?:with|to) (.{10,250}?)(?:\.|$)/i,
     ];
 
     const patterns = type === 'Action' ? actionPatterns : decisionPatterns;
@@ -352,11 +351,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let phrase = m[1].trim();
         // Capitalise first letter
         phrase = phrase.charAt(0).toUpperCase() + phrase.slice(1);
-        return phrase.length > 120 ? phrase.substring(0, 117) + '...' : phrase;
+        // Allow up to 220 chars — enough for a full meaningful sentence
+        return phrase.length > 220 ? phrase.substring(0, 217) + '...' : phrase;
       }
     }
-    // Fallback: cap the original text
-    return text.length > 130 ? text.substring(0, 127) + '...' : text;
+    // Fallback: show the full sentence (cap at 250 chars)
+    return text.length > 250 ? text.substring(0, 247) + '...' : text;
   }
 
   // --- ANALYSIS RESULTS LOGIC ---
