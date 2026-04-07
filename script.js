@@ -35,6 +35,32 @@ document.addEventListener('DOMContentLoaded', () => {
     navigateTo('upload-portal', 'Upload Meeting Context');
   });
 
+  // --- MOBILE HAMBURGER MENU ---
+  const hamburgerBtn = document.getElementById('hamburger-btn');
+  const sidebar = document.querySelector('.sidebar');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+
+  hamburgerBtn.addEventListener('click', openSidebar);
+  sidebarOverlay.addEventListener('click', closeSidebar);
+
+  // Auto-close sidebar when a nav item is tapped on mobile
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeSidebar();
+    });
+  });
+
   // --- RECENT INTAKES (localStorage persisted) ---
   function addToRecentIntakes(filename, speakers, decisions, actions, words) {
     let intakes = JSON.parse(localStorage.getItem('conclude_intakes') || '[]');

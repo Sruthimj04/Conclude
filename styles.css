@@ -516,3 +516,130 @@ tr:hover td {
   from { transform: translateY(0); opacity: 0.4; }
   to { transform: translateY(-4px); opacity: 1; }
 }
+
+/* ═══════════════════════════════════════════════
+   MOBILE RESPONSIVE LAYOUT
+═══════════════════════════════════════════════ */
+
+/* Hamburger button - hidden on desktop */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  color: var(--text-primary);
+  margin-right: 1rem;
+}
+
+/* Sidebar overlay backdrop for mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+.sidebar-overlay.visible { display: block; }
+
+@media (max-width: 768px) {
+
+  /* Body stacks vertically */
+  body {
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* Sidebar slides in from left as overlay */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 260px;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Main content takes full width */
+  .main-content {
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Header gets hamburger */
+  .header {
+    padding: 0 1rem;
+    height: 60px;
+  }
+  .hamburger-btn { display: flex; align-items: center; }
+
+  /* Content body padding reduced */
+  .content-body {
+    padding: 1rem;
+    overflow-y: auto;
+    height: calc(100dvh - 60px);
+  }
+
+  /* Hero section compacts */
+  .dashboard-hero {
+    padding: 2rem 1.25rem 1.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .hero-orb {
+    width: 180px;
+    height: 180px;
+    right: -40px;
+    top: -40px;
+  }
+  .hero-title {
+    font-size: 1.75rem;
+  }
+  .hero-sub {
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+  .btn-hero {
+    font-size: 0.9rem;
+    padding: 0.7rem 1.4rem;
+  }
+
+  /* Tables scroll horizontally */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Chatbot widget full width on mobile */
+  .chat-widget {
+    width: calc(100vw - 2rem);
+    right: 1rem;
+    left: 1rem;
+    bottom: 1rem;
+  }
+
+  /* Upload zone padding reduced */
+  .upload-zone {
+    padding: 2.5rem 1rem;
+  }
+
+  /* Analysis meta wraps */
+  .flex-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  /* Sentiment bar on mobile */
+  .sentiment-bar {
+    height: 32px;
+  }
+}
