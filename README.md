@@ -121,7 +121,3 @@ python -m http.server 8000
 ## Screenshots
 
 > Upload a transcript → get structured intelligence instantly.
-
----
-
-*Built for the Cymonic.ai Hackathon 2024*
