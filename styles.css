@@ -532,6 +532,19 @@ tr:hover td {
   margin-right: 1rem;
 }
 
+/* Mobile brand — hidden on desktop, shown on mobile */
+.mobile-brand {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+/* Desktop page title — visible on desktop, hidden on mobile */
+.desktop-page-title {
+  display: block;
+}
+
 /* Sidebar overlay backdrop for mobile */
 .sidebar-overlay {
   display: none;
@@ -641,5 +654,20 @@ tr:hover td {
   /* Sentiment bar on mobile */
   .sentiment-bar {
     height: 32px;
+  }
+
+  /* Show brand, hide page title in mobile header */
+  .mobile-brand {
+    display: flex;
+  }
+  .desktop-page-title {
+    display: none;
+  }
+
+  /* Header layout on mobile */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 }
