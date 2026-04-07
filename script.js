@@ -249,51 +249,69 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!attendeesFound) allSpeakers.add(speaker);
         }
 
-        let lower = cleanText.toLowerCase();
+        // ── SENTENCE-LEVEL SCORING ENGINE ──
+        // Split the speaker's utterance into individual sentences for fine-grained analysis
+        const sentences = cleanText
+          .split(/(?<=[.!])\s+(?=[A-Z"'])|(?<=\.)\s+(?=[A-Z"'])/)
+          .map(s => s.trim())
+          .filter(s => s.length > 15 && s.split(/\s+/).length >= 5);
 
-        // ── STRICT ACTION DETECTION ──
-        // Only match genuine first-person commitments or direct assignments
-        const ACTION_PATTERNS = [
-          /\bi('ll| will| am going to)\b/i,                    // "I will", "I'll", "I am going to"
-          /\btake\s+(the\s+)?action\s+(item\s+)?to\b/i,        // "take the action item to"
-          /\bplease\s+[a-z]+\b.{5,}/i,                         // "please run a cost-benefit..."
-          /\bwill\s+(complete|finish|deliver|submit|draft|update|send|fix|handle|run|set up|reach out|look into|review|prepare|check|implement|build|test|deploy|schedule|coordinate|ensure|make sure|get|provide)\b/i,
-          /\bis\s+responsible\s+for\b/i,                       // "X is responsible for"
-          /\bcommit(ting)?\s+to\b/i,                           // "committing to"
-          /\bassigned?\s+to\b.*\bby\b/i,                       // "assigned to X by [date]"
-        ];
+        // If no good sentence split (short line), analyze the whole thing
+        const toAnalyze = sentences.length > 0 ? sentences : [cleanText];
 
-        // ── STRICT DECISION DETECTION ──
-        // Only match explicit decision statements
-        const DECISION_PATTERNS = [
-          /\bdecision\s*(made|is\s*:?|:)\s*.{5,}/i,            // "Decision made:", "Decision:"
-          /\bwe\s+(decided|have decided|are deciding)\b/i,     // "We decided"
-          /\bwe\s+('ve\s+)?agreed\s+to\b/i,                   // "We agreed to"
-          /\bformal(ly)?\s+(decide|agree|commit)\b/i,          // "formally decide"
-          /\bgoing\s+with\b.{5,}/i,                            // "going with [option]"
-          /\bno\s+(hybrid|alternative|other)\b/i,              // "no hybrid approach"
-          /\bwill\s+(delay|migrate|move|launch|adopt|use|switch|standardize|deprecate)\b.{5,}/i, // team-level decisions
-        ];
+        toAnalyze.forEach(sentence => {
+          const sl = sentence.toLowerCase();
+          const words = sentence.split(/\s+/).length;
 
-        const wordCount = cleanText.trim().split(/\s+/).length;
-        const isQuestion = cleanText.trim().endsWith('?');
+          // Skip questions and pure speculation
+          if (sentence.trim().endsWith('?')) return;
+          if (/\b(i think|i feel|i wonder|what if|maybe|perhaps|could we|should we|would it|isn't it|don't you)\b/i.test(sentence)) return;
 
-        // Test strict decision patterns
-        const isDecision = !isQuestion && wordCount >= 8 && DECISION_PATTERNS.some(p => p.test(cleanText));
-        // Test strict action patterns
-        const isAction   = !isQuestion && wordCount >= 8 && ACTION_PATTERNS.some(p => p.test(cleanText));
+          // ── DECISION SCORING ──
+          let dScore = 0;
+          if (/\bdecision\s*(made|is\s*:?|:)\s*.{4,}/i.test(sentence))         dScore += 4;
+          if (/\bwe\s+(decided|have\s+decided)\b/i.test(sentence))              dScore += 4;
+          if (/\bwe('ve)?\s+agreed\s+to\b/i.test(sentence))                    dScore += 4;
+          if (/\bformally\s+(decide|agree|commit)\b/i.test(sentence))           dScore += 4;
+          if (/\bwe\s+will\s+(?!just|still|also|be)\w+/i.test(sentence))       dScore += 3;
+          if (/\bgoing\s+with\b.{4,}/i.test(sentence))                         dScore += 3;
+          if (/\bwill\s+(delay|migrate|move|launch|adopt|switch|standardize|deprecate|scrap|cancel|roll out|phase out)\b/i.test(sentence)) dScore += 3;
+          if (/\bno\s+(hybrid|alternative|other option)\b/i.test(sentence))     dScore += 3;
+          if (/\bfinal\s+(call|decision|answer)\b/i.test(sentence))             dScore += 3;
+          if (/\bwant\s+to\s+formally\b/i.test(sentence))                      dScore += 3;
+          if (/\bi want\s+to\s+(decide|confirm|lock)\b/i.test(sentence))        dScore += 2;
+          // Anti-signals
+          if (/\b(i think|suppose|assume|i hope|ideally)\b/i.test(sentence))    dScore -= 2;
 
-        if (isDecision) {
-          const keyPhrase = extractKeyPhrase(cleanText, 'Decision');
-          allExtractedData.push({ type: 'Decision', text: keyPhrase, assignee: speaker || 'Team', due: '-', sentiment: detectSentiment(cleanText) });
-        }
-        else if (isAction) {
-          let due = '-';
-          let dateMatch = line.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|\w+ \d{1,2}(?:th|st|nd|rd)?,?\s*\d{0,4})/i);
-          if (dateMatch) due = dateMatch[1];
-          const keyPhrase = extractKeyPhrase(cleanText, 'Action');
-          allExtractedData.push({ type: 'Action', text: keyPhrase, assignee: speaker || 'Team', due: due, sentiment: detectSentiment(cleanText) });
-        }
+          // ── ACTION SCORING ──
+          let aScore = 0;
+          if (/\bi('ll| will| am going to| commit to)\b/i.test(sentence))       aScore += 4;
+          if (/\btake\s+(the\s+)?action\s+(item\s+)?to\b/i.test(sentence))     aScore += 4;
+          if (/\bi('ll)?\s+(take|own|handle|own this|do this)\b/i.test(sentence)) aScore += 3;
+          if (/\bplease\s+\w+.{5,}/i.test(sentence))                           aScore += 3; // assignment
+          if (/\b(can|could)\s+you\s+\w+.{5,}/i.test(sentence))               aScore += 3; // "can you [verb]..."
+          if (/\bwill\s+(draft|send|update|submit|complete|finish|review|check|prepare|implement|fix|build|test|deploy|run|reach out|coordinate|follow up|look into|handle|explore|analyse|analyze|set up|get|push|merge)\b/i.test(sentence)) aScore += 3;
+          if (/\bi\s+(need to|must|have to)\s+\w+.{5,}/i.test(sentence))       aScore += 2;
+          if (/\bby\s+(tonight|tomorrow|end of (the\s+)?(day|week|month)|[A-Z][a-z]+ \d{1,2})\b/i.test(sentence)) aScore += 2; // deadline adds confidence
+          if (/\bgive\s+me\s+until\b/i.test(sentence))                         aScore += 2;
+          if (/\bresponsible\s+for\b/i.test(sentence))                         aScore += 2;
+          if (/\bi('d| should)\s+also\b/i.test(sentence))                      aScore += 1;
+          // Anti-signals
+          if (/\b(i thought|i used to|i was|it was)\b/i.test(sentence))        aScore -= 2;
+          if (/\b(we should|everyone should|they should)\b/i.test(sentence))   aScore -= 1;
+
+          // Only extract if confident enough (score ≥ 3)
+          if (dScore >= 3 && dScore > aScore) {
+            const keyPhrase = extractKeyPhrase(sentence, 'Decision');
+            allExtractedData.push({ type: 'Decision', text: keyPhrase, assignee: speaker || 'Team', due: '-', sentiment: detectSentiment(sentence) });
+          } else if (aScore >= 3) {
+            let due = '-';
+            let dateMatch = sentence.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|tonight|tomorrow|end of (?:the\s+)?\w+|\w+ \d{1,2}(?:th|st|nd|rd)?)/i);
+            if (dateMatch) due = dateMatch[1];
+            const keyPhrase = extractKeyPhrase(sentence, 'Action');
+            allExtractedData.push({ type: 'Action', text: keyPhrase, assignee: speaker || 'Team', due: due, sentiment: detectSentiment(sentence) });
+          }
+        });
       });
     });
   }
