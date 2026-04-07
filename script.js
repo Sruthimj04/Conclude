@@ -252,16 +252,68 @@ document.addEventListener('DOMContentLoaded', () => {
         let lower = cleanText.toLowerCase();
 
         if (lower.includes('decide') || lower.includes('decision') || lower.includes('agreed') || lower.includes('we will') || lower.includes('agreed to')) {
-          allExtractedData.push({ type: 'Decision', text: cleanText, assignee: speaker || 'Team', due: '-' });
+          // Filter out simple questions like "Are we all agreed on that?"
+          const isQuestion = cleanText.trim().endsWith('?') && cleanText.split(' ').length < 12;
+          if (!isQuestion) {
+            const keyPhrase = extractKeyPhrase(cleanText, 'Decision');
+            allExtractedData.push({ type: 'Decision', text: keyPhrase, assignee: speaker || 'Team', due: '-', sentiment: detectSentiment(cleanText) });
+          }
         }
         else if (lower.includes('action') || lower.includes('task') || lower.includes('will do') || lower.includes('will take') || lower.includes('need to') || lower.includes('should') || lower.includes('assign') || lower.includes('complete') || lower.includes('i will') || lower.includes('i\'ll')) {
-          let due = '-';
-          let dateMatch = line.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|\w+ \d{1,2}(?:th|st|nd|rd)?,?\s*\d{0,4})/i);
-          if (dateMatch) due = dateMatch[1];
-          allExtractedData.push({ type: 'Action', text: cleanText, assignee: speaker || 'Team', due: due });
+          // Must be a real sentence (≥6 words) not just a fragment
+          if (cleanText.split(' ').length >= 6) {
+            let due = '-';
+            let dateMatch = line.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|\w+ \d{1,2}(?:th|st|nd|rd)?,?\s*\d{0,4})/i);
+            if (dateMatch) due = dateMatch[1];
+            const keyPhrase = extractKeyPhrase(cleanText, 'Action');
+            allExtractedData.push({ type: 'Action', text: keyPhrase, assignee: speaker || 'Team', due: due, sentiment: detectSentiment(cleanText) });
+          }
         }
       });
     });
+  }
+
+  // ── SENTIMENT DETECTION ──
+  function detectSentiment(text) {
+    const lower = text.toLowerCase();
+    const positiveWords = ['great','good','excellent','confirmed','done','happy','glad','confident','success','approved','perfect','agree','absolutely','on track','ready','completed','resolved','will complete','committing'];
+    const negativeWords = ['worried','concern','risk','delay','problem','issue','behind','longer than expected','cannot','can\'t','frustrated','blocked','difficult','challenging','unfortunately','uncertain','unclear','not sure','miss','missed','overdue'];
+    const pos = positiveWords.filter(w => lower.includes(w)).length;
+    const neg = negativeWords.filter(w => lower.includes(w)).length;
+    if (neg > pos) return 'Concerned';
+    if (pos > neg) return 'Confident';
+    return 'Neutral';
+  }
+
+  // ── CONCISE SUMMARY EXTRACTION ──
+  // Distills a long sentence into the key commitment/decision phrase
+  function extractKeyPhrase(text, type) {
+    const lower = text.toLowerCase();
+    // Try to extract the core commitment pattern
+    const actionPatterns = [
+      /i(?:'ll| will) (.{10,80}?)(?:\.|$)/i,
+      /(?:will|going to) (.{10,80}?)(?:\.|$)/i,
+      /(?:action|task)[:\s]+(.{10,80}?)(?:\.|$)/i,
+      /(?:complete|finish|deliver|submit|draft|update|send|fix|do|handle) (.{10,80}?)(?:\.|$)/i,
+    ];
+    const decisionPatterns = [
+      /(?:decision(?:\s+is)?|decided?(?:\s+(?:to|that))?|agreed?(?:\s+(?:to|that))?)[:\s]+(.{10,120}?)(?:\.|$)/i,
+      /we (?:will|are going to|shall) (.{10,100}?)(?:\.|$)/i,
+      /(?:going|decided) (?:with|to) (.{10,100}?)(?:\.|$)/i,
+    ];
+
+    const patterns = type === 'Action' ? actionPatterns : decisionPatterns;
+    for (const p of patterns) {
+      const m = text.match(p);
+      if (m) {
+        let phrase = m[1].trim();
+        // Capitalise first letter
+        phrase = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+        return phrase.length > 120 ? phrase.substring(0, 117) + '...' : phrase;
+      }
+    }
+    // Fallback: cap the original text
+    return text.length > 130 ? text.substring(0, 127) + '...' : text;
   }
 
   // --- ANALYSIS RESULTS LOGIC ---
@@ -363,18 +415,30 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = '';
 
     let dataToRender = allExtractedData;
+    // Deduplicate by assignee+text to avoid repeat rows 
+    const seen = new Set();
+    dataToRender = dataToRender.filter(r => {
+      const key = r.assignee + '|' + r.text.substring(0, 40);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     if (dataToRender.length === 0) {
-      dataToRender = [{ type: 'Decision', text: 'No actionable items found in transcript.', assignee: '-', due: '-' }];
+      dataToRender = [{ type: 'Decision', text: 'No actionable items found in transcript.', assignee: '-', due: '-', sentiment: 'Neutral' }];
     }
 
     dataToRender.forEach(row => {
       const tr = document.createElement('tr');
       const tagClass = row.type === 'Decision' ? 'decision' : 'action';
+      const sentiment = row.sentiment || 'Neutral';
+      const sentClass = sentiment === 'Confident' ? 'sent-positive' : sentiment === 'Concerned' ? 'sent-negative' : 'sent-neutral';
       tr.innerHTML = `
         <td><span class="tag ${tagClass}">${row.type}</span></td>
         <td>${row.text}</td>
         <td style="font-family: 'Outfit';">${row.assignee}</td>
         <td class="text-muted">${row.due}</td>
+        <td><span class="sentiment-badge ${sentClass}">${sentiment}</span></td>
       `;
       tbody.appendChild(tr);
     });
