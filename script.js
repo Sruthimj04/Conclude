@@ -219,28 +219,34 @@ document.addEventListener('DOMContentLoaded', () => {
           totalWordCount += line.split(/\s+/).filter(w => w.length > 0).length;
         }
 
-        // Detect speaker from dialogue: "Name: message text"
-        // Prefix before first colon must be plausible name (1-3 words, letters only)
+        // ── SPEAKER EXTRACTION using targeted regex patterns ──
+        // Handles all common formats:
+        //   [00:01:20] Aaisha: text
+        //   [01:15] Alex Chen: text
+        //   Sruthi: text
+        //   Aaisha (Engineer): text
         let speaker = null;
-        let colonIdx = line.indexOf(':');
-        if (colonIdx !== -1 && colonIdx < 35 && !headerPrefixes.test(line)) {
-          let prefix = line.substring(0, colonIdx).trim();
-          // Strip timestamp artifacts like [01:15] or 01:15]
-          prefix = prefix.replace(/^[\[\(]?\d{1,2}:\d{2}(:\d{2})?[\]\)]?\s*/, '')
-                         .replace(/^.*?\]\s*/, '')
-                         .trim();
-          // Valid name: letters + spaces only, 1-3 words
-          if (prefix.length > 0 && /^[A-Za-z ]+$/.test(prefix) && prefix.split(/\s+/).length <= 3) {
-            speaker = prefix;
-            // If no Attendees line was found, collect speakers from dialogue lines
-            if (!attendeesFound) allSpeakers.add(speaker);
+        let cleanText = line;
+
+        // Pattern 1: [timestamp] Name: text  (e.g. [00:01:20] Alan: ...)
+        let m = line.match(/^\[[\d:]+\]\s*([A-Za-z][A-Za-z\s]{0,25}?):\s*(.+)/);
+        if (m) {
+          speaker = m[1].trim();
+          cleanText = m[2].trim();
+        }
+
+        // Pattern 2: Name (Role): text OR Name: text (no timestamp)
+        if (!speaker && !headerPrefixes.test(line)) {
+          m = line.match(/^([A-Za-z][A-Za-z\s]{0,25?})(?:\s*\([^)]*\))?:\s*(.+)/);
+          if (m && m[1].trim().split(/\s+/).length <= 3) {
+            speaker = m[1].trim();
+            cleanText = m[2].trim();
           }
         }
 
-        // Get clean content (text after speaker label)
-        let cleanText = line;
-        if (speaker && colonIdx !== -1) {
-          cleanText = line.substring(colonIdx + 1).trim();
+        // Add unique speaker to set
+        if (speaker) {
+          if (!attendeesFound) allSpeakers.add(speaker);
         }
 
         let lower = cleanText.toLowerCase();
@@ -248,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lower.includes('decide') || lower.includes('decision') || lower.includes('agreed') || lower.includes('we will') || lower.includes('agreed to')) {
           allExtractedData.push({ type: 'Decision', text: cleanText, assignee: speaker || 'Team', due: '-' });
         }
-        else if (lower.includes('action') || lower.includes('task') || lower.includes('will do') || lower.includes('will take') || lower.includes('need to') || lower.includes('should') || lower.includes('assign') || lower.includes('complete')) {
+        else if (lower.includes('action') || lower.includes('task') || lower.includes('will do') || lower.includes('will take') || lower.includes('need to') || lower.includes('should') || lower.includes('assign') || lower.includes('complete') || lower.includes('i will') || lower.includes('i\'ll')) {
           let due = '-';
           let dateMatch = line.match(/by\s+([A-Z][a-z]+ \d{1,2}(?:th|st|nd|rd)?|\w+ \d{1,2}(?:th|st|nd|rd)?,?\s*\d{0,4})/i);
           if (dateMatch) due = dateMatch[1];
