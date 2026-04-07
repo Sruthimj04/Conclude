@@ -108,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const dropZone = document.getElementById('drop-zone');
   const fileInput = document.getElementById('file-input');
   const uploadProgress = document.getElementById('upload-progress');
-  const progressBarFill = document.getElementById('progress-bar-fill');
   const navMeetingDetails = document.getElementById('nav-meeting-details');
 
   dropZone.addEventListener('click', () => fileInput.click());
@@ -177,12 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
         clearInterval(interval);
         setTimeout(() => {
           uploadProgress.classList.add('hidden');
-          progressBarFill.style.width = '0%';
           showAnalysisResults(displayName);
         }, 500);
       }
       if (progress > 95 && filesRead < validFiles.length) progress = 95; // wait for read
-      progressBarFill.style.width = `${progress}%`;
     }, 300);
   }
 

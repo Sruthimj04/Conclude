@@ -212,15 +212,33 @@ h1, h2, h3, h4 {
   background-color: rgba(255,255,255,0.05);
 }
 
-/* Dashboard Hero */
+/* Dashboard Hero — rotating gradient border */
+.dashboard-hero-wrapper {
+  position: relative;
+  border-radius: calc(var(--radius-lg) + 2px);
+  padding: 2px; /* border thickness */
+  margin-bottom: 2rem;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    #fce300, #f97316, #ef4444, #8b5cf6, #3b82f6, #fce300
+  );
+  animation: rotateBorder 4s linear infinite;
+}
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes rotateBorder {
+  to { --angle: 360deg; }
+}
+
 .dashboard-hero {
   position: relative;
   padding: 3rem 2rem 2.5rem;
-  margin-bottom: 2rem;
   border-radius: var(--radius-lg);
-  background: rgba(24, 24, 27, 0.35);
+  background: rgba(18, 18, 22, 0.96);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
   overflow: hidden;
 }
 
@@ -273,6 +291,37 @@ h1, h2, h3, h4 {
 .btn-hero:hover {
   transform: translateY(-2px) scale(1.03);
   box-shadow: 0 8px 30px rgba(252, 227, 0, 0.5);
+}
+
+/* ── Waveform Upload Animation ── */
+.waveform-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 48px;
+  margin: 1rem auto 0;
+}
+.waveform-bar {
+  width: 5px;
+  border-radius: 99px;
+  background: linear-gradient(to top, var(--accent-color), #f97316);
+  animation: waveAnim 1s ease-in-out infinite;
+  transform-origin: bottom;
+}
+.waveform-bar:nth-child(1)  { height: 12px; animation-delay: 0s; }
+.waveform-bar:nth-child(2)  { height: 24px; animation-delay: 0.1s; }
+.waveform-bar:nth-child(3)  { height: 36px; animation-delay: 0.2s; }
+.waveform-bar:nth-child(4)  { height: 20px; animation-delay: 0.3s; }
+.waveform-bar:nth-child(5)  { height: 44px; animation-delay: 0.4s; }
+.waveform-bar:nth-child(6)  { height: 28px; animation-delay: 0.5s; }
+.waveform-bar:nth-child(7)  { height: 16px; animation-delay: 0.6s; }
+.waveform-bar:nth-child(8)  { height: 36px; animation-delay: 0.7s; }
+.waveform-bar:nth-child(9)  { height: 22px; animation-delay: 0.8s; }
+.waveform-bar:nth-child(10) { height: 14px; animation-delay: 0.9s; }
+@keyframes waveAnim {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+  50%       { transform: scaleY(1);   opacity: 1; }
 }
 
 /* Section label */
